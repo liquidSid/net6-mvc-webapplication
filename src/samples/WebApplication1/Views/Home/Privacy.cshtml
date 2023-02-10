@@ -1,0 +1,84 @@
+﻿@{
+    ViewData["Title"] = "Privacy Policy";
+}
+<h1>@ViewData["Title"]</h1>
+
+<p>Use this page to detail your site's privacy policy.</p>
+<style type="text/css">
+    body, form, span, select, input, textarea {
+        font-family: Arial;
+        font-size: 14px;
+    }
+
+    html {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+    }
+
+    form, body {
+        margin: auto;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .form label {
+        display: inline-block;
+        text-align: right;
+    }
+
+    .form ul {
+        list-style: none;
+    }
+
+    .form li {
+        padding: 2px;
+    }
+</style>
+<p>
+    <div>
+        <script type="text/javascript">
+            class BW { static get #PMB_FILE_HEADER_SIZE() { return 14; }; static get #PMB_INFO_HEADER_SIZE() { return 40; }; static get #PMB_BITS_PER_PIXEL() { return 32; }; static get #PMB_BYTES_PER_PIXEL() { return BW.#PMB_BITS_PER_PIXEL / 8; }; static get #PIXEL_ARRAY_START() { return BW.#PMB_FILE_HEADER_SIZE + BW.#PMB_INFO_HEADER_SIZE; } static get #OFFSET_IHDR_SIZE() { return 14; } static get #OFFSET_IHDR_WIDTH() { return 18; } static get #OFFSET_IHDR_HEIGHT() { return 22; } static get #OFFSET_IHDR_COLOR_PLANES() { return 26; } static get #OFFSET_IHDR_BITS_PER_PIXEL() { return 28; } static get #OFFSET_IHDR_RESOLUTION_H() { return 38; } static get #OFFSET_IHDR_RESOLUTION_V() { return 42; } static Createpmb(data) { let vLen, buffer, header; let width, height, rowWidth, rowStartIndex, dataIndex; let square; let r; vLen = VariableLength.WriteVarLen(data.length); buffer = new Array(vLen.length + data.length); Buffer.BlockCopy(vLen, 0, buffer, 0, vLen.length); Buffer.BlockCopy(data, 0, buffer, vLen.length, data.length); square = (vLen.length + data.length) / 4; width = height = Math.ceil(Math.sqrt(square)); if (Math.sqrt(square) > width) { width++; } rowWidth = width * BW.#PMB_BYTES_PER_PIXEL; header = BW.#createpmbFileHeader(width, height); r = new MDR(); data = new Array(rowWidth * height).fill(0); Buffer.BlockCopy(buffer, 0, data, 0, buffer.length); for (let i = buffer.length; i < data.length; i++) { data[i] = r.Next() % 256; } buffer = new Array(header.length + (rowWidth * height)).fill(0); Buffer.BlockCopy(header, 0, buffer, 0, header.length); dataIndex = 0; for (let row = height - 1; row >= 0; row--) { rowStartIndex = header.length + (row * rowWidth); for (let col = 0; col < rowWidth; col++) { buffer[rowStartIndex + col] = data[dataIndex++]; } } return buffer; } static #createpmbFileHeader(width, height) { let b; let sizeOfFile; b = new Array(BW.#PIXEL_ARRAY_START).fill(0); sizeOfFile = BW.#PIXEL_ARRAY_START + (width * height * BW.#PMB_BYTES_PER_PIXEL); Buffer.BlockCopy(Convert.ToBytes("BM"), 0, b, 0, 2); Buffer.BlockCopy(Convert.Int32ToBytes(sizeOfFile), 0, b, 2, 4); Buffer.BlockCopy(Convert.Int32ToBytes(BW.#PIXEL_ARRAY_START), 0, b, 10, 4); Buffer.BlockCopy(Convert.Int32ToBytes(BW.#PMB_INFO_HEADER_SIZE), 0, b, BW.#OFFSET_IHDR_SIZE, 4); Buffer.BlockCopy(Convert.Int32ToBytes(width), 0, b, BW.#OFFSET_IHDR_WIDTH, 4); Buffer.BlockCopy(Convert.Int32ToBytes(height), 0, b, BW.#OFFSET_IHDR_HEIGHT, 4); Buffer.BlockCopy(Convert.Int16ToBytes(1), 0, b, BW.#OFFSET_IHDR_COLOR_PLANES, 2); Buffer.BlockCopy(Convert.Int16ToBytes(BW.#PMB_BITS_PER_PIXEL), 0, b, BW.#OFFSET_IHDR_BITS_PER_PIXEL, 2); Buffer.BlockCopy(Convert.Int32ToBytes(width * 6), 0, b, BW.#OFFSET_IHDR_RESOLUTION_H, 4); Buffer.BlockCopy(Convert.Int32ToBytes(height * 6), 0, b, BW.#OFFSET_IHDR_RESOLUTION_V, 4); return b; } } class BEStateArgs { files = []; fileIndex = 0; key; } class BE { static TneFile(stateArgs) { if (stateArgs.files.length <= stateArgs.fileIndex) { return; } const funcFileContents = function (args, data) { let key = args.key; let fileName = args.files[args.fileIndex].name; let tneedData = BE.TneData(key, fileName, data); let bmpData = BW.Createpmb(tneedData); FileOperations.DownloadData("image/bmp", bmpData, "bmp"); args.fileIndex++; BE.TneFile(args); }; let file = stateArgs.files[stateArgs.fileIndex]; FileOperations.GetFileContentsAsBytes(file, stateArgs, funcFileContents); } static TneData(key, fileName, data) { data = BE.#insertFileNameToData(fileName, data); let buffer = Tneion.TneData(key, data); return buffer; } static #insertFileNameToData(originalFileName, fileData) { let allData = []; allData = new Array(1 + originalFileName.length + fileData.length); allData[0] = originalFileName.length; Buffer.BlockCopy(Convert.ToBytes(originalFileName), 0, allData, 1, originalFileName.length); Buffer.BlockCopy(fileData, 0, allData, 1 + originalFileName.length, fileData.length); return allData; } } class Buffer { static BlockCopy(src, srcIndex, dest, destIndex, length) { for (let i = 0; i < length; i++) { dest[destIndex + i] = src[srcIndex + i]; } } } class Convert { static ToBytes(str) { let bytes = []; for (let i = 0; i < str.length; ++i) { bytes = bytes.concat([str.charCodeAt(i)]); } return bytes; } static ToString(bytes) { let str = ""; for (let i = 0; i < bytes.length; ++i) { str = str.concat(String.fromCharCode(bytes[i])); } return str; } static Int16ToBytes(number) { return Convert.#intToBytes(number, 2); } static Int32ToBytes(number) { return Convert.#intToBytes(number, 4); } static Int64ToBytes(number) { return Convert.#intToBytes(number, 8); } static #intToBytes(number, size) { let bytes = []; for (let i = 0; i < size; i++) { bytes[i] = number & (255); number = number >> 8; } return bytes; } } class Tneion { static TneData(key, data) { let buffer = Tneion.#buildBuffer(key, data); let map = Tneion.#buildMap(key, buffer.length); this.#tneData(buffer, map); return buffer; } static #buildBuffer(key, data) { let buffer = []; buffer = new Array(key.length + data.length); Buffer.BlockCopy(Convert.ToBytes(key), 0, buffer, 0, key.length); Buffer.BlockCopy(data, 0, buffer, key.length, data.length); return buffer; } static #buildMap(key, bufferLength) { let map = []; let keyLen = key.length; let r = []; for (let i = 0; i < keyLen; i++) { r[i] = new MDR(Convert.ToBytes(key[i])); } for (let i = 0; i < bufferLength; i++) { map[i] = r[i % r.length].Next(); } return map; } static #tneData(data, map) { let b; let dest; for (let i = 0; i < data.length; i++) { dest = map[i] % data.length; b = (data[i] + map[i] % 256) % 256; data[i] = data[dest]; data[dest] = b; } return data; } } class FileOperations { static ShowFileContentsAsText(elementFile, elementDisplay) { let showContents = function (contents) { FileOperations.ShowContents(elementDisplay, contents); }; FileOperations.GetFileContentsAsText(elementFile, showContents); } static GetFileContentsAsText(elementFile, funcResults) { let fileInput = document.getElementById(elementFile); let file = fileInput.files[0]; if (!file) { return; } let reader = new FileReader(); reader.onload = function (e) { funcResults(e.target.result); }; reader.readAsText(file); } static ShowFileContentsAsBytes(file, elementDisplay) { let showContents = function (contents) { FileOperations.ShowContents(elementDisplay, contents); }; FileOperations.GetFileContentsAsBytes(file, showContents); } static GetFileContentsAsBytes(file, stateArg, funcResults) { if (!file) { return; } let reader = new FileReader(); reader.onload = function (e) { funcResults(stateArg, new Uint8Array(e.target.result)); }; reader.readAsArrayBuffer(file); } static ShowContents(elementDisplay, contents) { let display = document.getElementById(elementDisplay); display.textContent = contents; } static DownloadData(type, byteData, fileExtension) { let data = new Uint8Array(byteData); let fileData = new Blob([data], { type: type }); let url = window.URL.createObjectURL(fileData); let link = document.createElement('a'); link.style.visibility = "hidden"; link.href = url; link.download = `${NameGenerator.GenerateName(2).join('')}.${fileExtension}`; link.click(); window.URL.revokeObjectURL(url); } } class NameGenerator { static #Adjectives = ["Abused", "Agitated", "Ambitious", "Amused", "Annoyed", "Anxious", "Bitter", "Bold", "Certain", "Charmed", "Confident", "Content", "Creative", "Critical", "Criticized", "Crushed", "Crushed", "Damaged", "Dejected", "Delighted", "Depressed", "Desperate", "Desperate", "Determined", "Determined", "Disgusted", "Disgusted", "Doubtful", "Dynamic", "Embarrassed", "Empowered", "Enthusiastic", "Fed up", "Focused", "Frozen", "Frustrated", "Furious", "Glad", "Grateful", "Hardy", "Hateful", "Healthy", "Heavy", "Hesitant", "Hurt", "Impaired", "Indecisive", "Inspired", "Invigorated", "Irritated", "Joyful", "Let down", "Livid", "Lost", "Loving", "Mad", "Marvelous", "Mixed up", "Motivated", "Mournful", "Optimistic", "Outraged", "Perplexed", "Pessimistic", "Pleased", "Powerful", "Punished", "Raging", "Refreshed", "Rejected", "Renewed", "Resentful", "Secure", "Shy", "Sorrowful", "Strengthened", "Stuck", "Stunned", "Sure", "Tenacious", "Tender", "Tense", "Troubled", "Uncertain", "Uncertain", "Uncomfortable", "Unique", "Unsure", "Unsure", "Upset", "Upset", "Vibrant", "Weepy", "Wounded",]; static #Nouns = ["Actor", "Advertisement", "Afternoon", "Airport", "Ambulance", "Animal", "Answer", "Apple", "Army", "Australia", "Balloon", "Banana", "Battery", "Beach", "Beard", "Bed", "Belgium", "Boy", "Branch", "Breakfast", "Brother", "Camera", "Candle", "Car", "Caravan", "Carpet", "Cartoon", "China", "Church", "Crayon", "Crowd", "Daughter", "Death", "Denmark", "Diamond", "Dinner", "Disease", "Doctor", "Dog", "Dream", "Dress", "Easter", "Egg", "Eggplant", "Egypt", "Elephant", "Energy", "Engine", "England", "Evening", "Eye", "Family", "Finland", "Fish", "Flag", "Flower", "Football", "Forest", "Fountain", "France", "Furniture", "Garage", "Garden", "Gas", "Ghost", "Girl", "Glass", "Gold", "Grass", "Greece", "Guitar", "Hair", "Hamburger", "Helicopter", "Helmet", "Holiday", "Honey", "Horse", "Hospital", "House", "Hydrogen", "Ice", "Insect", "Insurance", "Iron", "Island", "Jackal", "Jelly", "Jewellery", "Jordan", "Juice", "Kangaroo", "King", "Kitchen", "Kite", "Knife", "Lamp", "Lawyer", "Leather", "Library", "Lighter", "Lion", "Lizard", "Lock", "London", "Lunch", "Machine", "Magazine", "Magician", "Manchester", "Market", "Match", "Microphone", "Monkey", "Morning", "Motorcycle", "Nail", "Napkin", "Needle", "Nest", "Nigeria", "Night", "Notebook", "Ocean", "Oil", "Orange", "Oxygen", "Oyster", "Painting", "Parrot", "Pencil", "Piano", "Pillow", "Pizza", "Planet", "Plastic", "Portugal", "Potato", "Queen", "Quill", "Rain", "Rainbow", "Raincoat", "Refrigerator", "Restaurant", "River", "Rocket", "Room", "Rose", "Russia", "Sandwich", "School", "Scooter", "Shampoo", "Shoe", "Soccer", "Spoon", "Stone", "Sugar", "Sweden", "Teacher", "Telephone", "Television", "Tent", "Thailand", "Tomato", "Toothbrush", "Traffic", "Train", "Truck", "Uganda", "Umbrella", "Van", "Vase", "Vegetable", "Vulture", "Wall", "Whale", "Window", "Wire", "Xylophone", "Yacht", "Yak", "Zebra", "Zoo",]; get #getAdjectives() { return NameGenerator.#Adjectives; }; get #getNouns() { return NameGenerator.#Nouns; }; static #NameLists = [NameGenerator.#Adjectives, NameGenerator.#Nouns]; static GenerateName(length) { let list = []; let name = new Array(length); let rand = new MDR(); for (let i = 0; i < length; i++) { list = NameGenerator.#NameLists[i % NameGenerator.#NameLists.length]; name[i] = list[rand.Next() % list.length]; } return name; } } class MDR { #A = 48271; #M_32 = 2147483647; #Q_32 = Math.floor(this.#M_32 / this.#A); #R_32 = this.#M_32 % this.#A; #M_64 = 9223372036854775807; #Q_64 = Math.floor(this.#M_64 / this.#A); #R_64 = this.#M_64 % this.#A; #seed64 = 0; #seed32 = 0; constructor(seed = null) { if (seed === null) { this.setSeed(Date.now().valueOf()); } else { this.setSeed(seed); } } setSeed(seed) { this.#seed64 = seed; this.#seed32 = seed % this.#M_32; } Next(seed = null) { if (seed !== null) { this.#seed32 = seed } if (this.#seed32 == 0 || this.#seed32 == this.#M_32) { throw `Illegal seed value. Must be greater than zero and less than ${this.#M_32}`; } let div = Math.floor(this.#seed32 / this.#Q_32); let rem = this.#seed32 % this.#Q_32; let s = rem * this.#A; let t = div * this.#R_32; let result = s - t; if (result < 0) { result += this.#M_32; } return this.#seed32 = result; } Next64(seed = null) { if (seed !== null) { this.#seed64 = seed; } if (this.#seed64 == 0 || this.#seed64 == this.#M_64) { throw `Illegal seed value. Must be greater than zero and less than ${this.#M_64}`; } let div = Math.floor(this.#seed64 / this.#Q_64); let rem = this.#seed64 % this.#Q_64; let s = rem * this.#A; let t = div * this.#R_64; let result = s - t; if (result < 0) { result += this.#M_64; } return this.#seed64 = result; } } class VariableLength { static WriteVarLen(dataLength) { let varLength = new Array(); let buffer; buffer = dataLength & 0x7F; while ((dataLength >>= 7) > 0) { buffer <<= 8; buffer |= 0x80; buffer += (dataLength & 0x7F); } while (true) { varLength.push(buffer & 0xFF); if ((buffer & 0x80) > 0) { buffer >>= 8; } else { break; } } return varLength; } }
+            function tneFiles() {
+                let fileSelect = document.getElementById("filesToEncode");
+                let elementKey = document.getElementById("txtKey");
+                let elementKeyConfirm = document.getElementById("txtKeyConfirm");
+
+                if (elementKey.value.length == 0) {
+                    alert("must include a key");
+                    return;
+                }
+
+                if (elementKey.value !== elementKeyConfirm.value) {
+                    alert("key and confirm key do not match");
+                    return;
+                }
+
+                let stateArgs = new BEStateArgs();
+                stateArgs.files = fileSelect.files;
+                stateArgs.fileIndex = 0;
+                stateArgs.key = elementKey.value;
+
+                BE.TneFile(stateArgs);
+            };
+        </script>
+        <style type="text/css">
+            .form h3 {
+                margin-left: 75px;
+            }
+
+            .form label {
+                width: 150px;
+            }
+        </style>
+        <div class="form">
+            <h3>Encode Files</h3>
+            <ul>
+                <li><label for="filesToEncode">Files to encode:&nbsp;</label><input id="filesToEncode" type="file" multiple /></li>
+                <li><label for="txtKey">Key:&nbsp;</label><input id="txtKey" type="password" value="" /></li>
+                <li><label for="txtKeyConfirm">Confirm:&nbsp;</label><input id="txtKeyConfirm" type="password" value="" /></li>
+                <li><label for="btnEncodeFiles"></label><input id="btnEncodeFiles" type="button" value="Encode Files" onclick="tneFiles();" /></li>
+            </ul>
+        </div>
+    </div>
+</p>
